@@ -21,55 +21,59 @@
 			showElement(tabName)
 			tab=tabName
 		}
-
-		var player = { // Anythig you want to be saved
-			numbers:[10,10,10,10,10,10,10,10,10,10], 
-			nps:[0,0,0,0,0,0,0,0,0,0],
-			digitAmounts:[0,0,0,0,0,0,0,0,0,0],
-			digitCosts:[10,10,10,10,10,10,10,10,10,10],
-			digitMults:[1,0.5,0.25,0.125,0.0625,0.03125,0.015625,0.0078125,0.00390625,0.001953125],
-			digitUpgradeCosts:[1,16,128,1024,8192,65536,524288,4194304,33554432,268435456],
-			pluses:0,
+			
+		function decimalArray(length, value, factor) {
+			list = []
+			for(var i = 0; i < length; i++) {
+				list.push(new Decimal(value).multiply(Decimal.pow(factor,i)))
+			}
+			return list
+		}
+			
+		player = { // Anything you want to be saved
+			numbers:decimalArray(10,10,1), 
+			nps:decimalArray(10,0,0),
+			digitAmounts:decimalArray(10,0,0),
+			digitCosts:decimalArray(10,10,1),
+			digitMults:decimalArray(10,1,0.5),
+			digitUpgradeCosts:decimalArray(10,1,8),
+			pluses:new Decimal(0),
 			digitShifts:0,
-			nextDigit:1,
-			digitShiftCost:4
+			nextDigit:new Decimal(0),
+			digitShiftCost:new Decimal(0)
+		}
+			
+		function resetDigits() {
+			player.numbers = decimalArray(10,10,1)
+			player.nps = decimalArray(10,0,0)
+			player.digitAmounts = decimalArray(10,0,0)
+			player.digitCosts = decimalArray(10,10,1)
+			player.digitUpgradeCosts = decimalArray(10,1,8)
 		}
 
 		function buyDigit(i) {
-			if (player.digitCosts[i] > player.numbers[i]) return 0; // can't buy the digi - function ends here
-			player.numbers[i] -= player.digitCosts[i]; // subtract the cost
-			player.digitCosts[i] = player.digitCosts[i]*2; // make the next digit cost more
-			player.digitAmounts[i]++; // one more digit
-			player.nps[i] = player.digitAmounts[i]*player.digitMults[i]; // this will be how many numbers we get per tick
+			if (player.digitCosts[i].gt(player.numbers[i])) return 0; // can't buy the digit - function ends here
+			player.numbers[i] = player.numbers[i].subtract(player.digitCosts[i]); // subtract the cost
+			player.digitCosts[i] = player.digitCosts[i].multiply(2); // make the next digit cost more
+			player.digitAmounts[i] = player.digitAmounts[i].add(1); // one more digit
+			player.nps[i] = player.digitAmounts[i].multiply(player.digitMults[i]); // this will be how many numbers we get per tick
 			update(i+"sDisplay",player.numbers[i]);
 			update("d"+i+"amountDisplay",player.digitAmounts[i]);
 			update("d"+i+"costDisplay",player.digitCosts[i]);
 		}
 
 		function getPluses() { // code to determine how many pluses we should get when adding digits
-			var temp = 1; // storage variable
+			var temp = new Decimal(1); // storage variable
 			for(var i=0; i<player.nextDigit; i++) {
-				temp = temp*(1+Math.pow(player.numbers[i]/1000,1/3))
+				temp = temp.multiply(1+Math.pow(player.numbers[i]/1000,1/3))
 			}
-			return Math.floor(temp)-1;
+			return temp.floor().subtract(1);
 		}
 
 		function addDigits() {
 			showElement("additionTabButton")
-			var oldNumbers = player.numbers; // temporary value for numbers pre-prestige
-			var tempPluses = getPluses(); //temporary value for pluses to be gained
-			player = {
-				numbers:[10,10,10,10,10,10,10,10,10,10], 
-				nps:[0,0,0,0,0,0,0,0,0,0],
-				digitAmounts:[0,0,0,0,0,0,0,0,0,0],
-				digitCosts:[10,10,10,10,10,10,10,10,10,10],
-				digitMults:player.digitMults,
-				digitUpgradeCosts:player.digitUpgradeCosts,
-				pluses:player.pluses+tempPluses,
-				digitShifts:player.digitShifts,
-				nextDigit:player.nextDigit,
-				digitShiftCost:player.digitShiftCost
-			}
+			player.pluses = player.pluses.add(getPluses())
+			resetDigits()
 			for(var i=0; i<10; i++) {
 				update(i+"sDisplay",player.numbers[i]);
 				update("d"+i+"amountDisplay",player.digitAmounts[i]);
@@ -131,33 +135,8 @@
 
 		function hardReset() {
 			if(confirm("Are you sure you want to hard reset? This will erase all your progress!")) {
-				player = {
-					numbers:[10,10,10,10,10,10,10,10,10,10], 
-					nps:[0,0,0,0,0,0,0,0,0,0],
-					digitAmounts:[0,0,0,0,0,0,0,0,0,0],
-					digitCosts:[10,10,10,10,10,10,10,10,10,10],
-					digitMults:[1,0.5,0.25,0.125,0.0625,0.03125,0.015625,0.0078125,0.00390625,0.001953125],
-					digitUpgradeCosts:[1,16,128,1024,8192,65536,524288,4194304,33554432,268435456],
-					pluses:0,
-					digitShifts:0,
-					nextDigit:1,
-					digitShiftCost:4
-				}
-				for(var i=0;i<10;i++) {
-					update(i+"sDisplay",player.numbers[i]);
-					update("d"+i+"amountDisplay",player.digitAmounts[i]);
-					update("d"+i+"costDisplay",player.digitCosts[i]);
-					update("d"+i+"multDisplay",player.digitMults[i]);
-					update("d"+i+"UpgradeCostDisplay",player.digitUpgradeCosts[i]);
-					hideElement("d"+i+"row");
-					hideElement("d"+i+"UpgradeButton");
-				}
-				update("plusesDisplay",player.pluses);
-				update("digitShiftsDisplay",player.digitShifts);
-				update("nextDigitDisplay",player.nextdigit);
-				update("digitShiftCostDisplay",player.digitShiftcost);
-				hideElement("addButton");
-				hideElement("additionTabButton");
+				localStorage.removeItem("DCSave")
+				location.reload()
 			}
 		}
 
